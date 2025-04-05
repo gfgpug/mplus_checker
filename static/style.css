@@ -1,0 +1,28 @@
+body {
+    background-color: #f8f9fa;
+}
+
+.card {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: 0;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+/* Styling for affix icons */
+td img {
+    border-radius: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}

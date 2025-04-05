@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ character.name }} - Mythic+ Runs</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    </head>
+
+    <body>
+        <div class="container py-4">
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ character.name }}</li>
+                </ol>
+            </nav>
+
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <img src="{{ character.thumbnail_url }}" alt="{{ character.name }}" class="rounded"
+                                        width="64">
+                                </div>
+                                <div>
+                                    <h1 class="h3 mb-1">{{ character.name }}</h1>
+                                    <p class="mb-0 text-muted">{{ character.active_spec_name }}
+                                        {{ character.class_name }}</p>
+                                    <a href="{{ character.profile_url }}" target="_blank" class="small">View on
+                                        Raider.IO</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h2 class="h5 mb-0">Recent Mythic+ Runs</h2>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Dungeon</th>
+                                            <th>Level</th>
+                                            <th>Completed</th>
+                                            <th>Time</th>
+                                            <th>Par Time</th>
+                                            <th>Upgrades</th>
+                                            <th>Score</th>
+                                            <th>Affixes</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if character.mythic_plus_recent_runs %}
+                                        {% for run in character.mythic_plus_recent_runs %}
+                                        <tr>
+                                            <td>{{ run.dungeon }}</td>
+                                            <td class="text-center">{{ run.mythic_level }}</td>
+                                            <td>{{ run.completed_at.split('T')[0] }}</td>
+                                            <td>{{ (run.clear_time_ms / 1000 / 60)|round(1) }} min</td>
+                                            <td>{{ (run.par_time_ms / 1000 / 60)|round(1) }} min</td>
+                                            <td class="text-center">
+                                                {% if run.num_keystone_upgrades == 0 %}
+                                                <span class="badge bg-secondary">+0</span>
+                                                {% elif run.num_keystone_upgrades == 1 %}
+                                                <span class="badge bg-success">+1</span>
+                                                {% elif run.num_keystone_upgrades == 2 %}
+                                                <span class="badge bg-success">+2</span>
+                                                {% elif run.num_keystone_upgrades == 3 %}
+                                                <span class="badge bg-success">+3</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ run.score|round(1) }}</td>
+                                            <td>
+                                                {% for affix in run.affixes %}
+                                                <img src="{{ affix.icon_url }}" alt="{{ affix.name }}"
+                                                    title="{{ affix.name }}" width="20" height="20" class="me-1">
+                                                {% endfor %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ run.url }}" target="_blank"
+                                                    class="btn btn-sm btn-outline-primary">Details</a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="9" class="text-center">No recent runs found.</td>
+                                        </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h2 class="h5 mb-0">Best Mythic+ Runs</h2>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Dungeon</th>
+                                            <th>Level</th>
+                                            <th>Completed</th>
+                                            <th>Time</th>
+                                            <th>Par Time</th>
+                                            <th>Upgrades</th>
+                                            <th>Score</th>
+                                            <th>Affixes</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if character.mythic_plus_best_runs %}
+                                        {% for run in character.mythic_plus_best_runs %}
+                                        <tr>
+                                            <td>{{ run.dungeon }}</td>
+                                            <td class="text-center">{{ run.mythic_level }}</td>
+                                            <td>{{ run.completed_at.split('T')[0] }}</td>
+                                            <td>{{ (run.clear_time_ms / 1000 / 60)|round(1) }} min</td>
+                                            <td>{{ (run.par_time_ms / 1000 / 60)|round(1) }} min</td>
+                                            <td class="text-center">
+                                                {% if run.num_keystone_upgrades == 0 %}
+                                                <span class="badge bg-secondary">+0</span>
+                                                {% elif run.num_keystone_upgrades == 1 %}
+                                                <span class="badge bg-success">+1</span>
+                                                {% elif run.num_keystone_upgrades == 2 %}
+                                                <span class="badge bg-success">+2</span>
+                                                {% elif run.num_keystone_upgrades == 3 %}
+                                                <span class="badge bg-success">+3</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ run.score|round(1) }}</td>
+                                            <td>
+                                                {% for affix in run.affixes %}
+                                                <img src="{{ affix.icon_url }}" alt="{{ affix.name }}"
+                                                    title="{{ affix.name }}" width="20" height="20" class="me-1">
+                                                {% endfor %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ run.url }}" target="_blank"
+                                                    class="btn btn-sm btn-outline-primary">Details</a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="9" class="text-center">No best runs found.</td>
+                                        </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="{{ url_for('static', path='/js/script.js') }}"></script>
+    </body>
+
+</html>
