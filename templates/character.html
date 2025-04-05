@@ -58,6 +58,8 @@
                                             <th>Par Time</th>
                                             <th>Upgrades</th>
                                             <th>Score</th>
+                                            <th>iLvl (Delta)</th>
+                                            <th>Group Comp</th>
                                             <th>Affixes</th>
                                             <th></th>
                                         </tr>
@@ -93,6 +95,71 @@
                                             </td>
                                             <td>{{ run.score|round(1) }}</td>
                                             <td>
+                                                {% set run_id = run.keystone_run_id %}
+                                                {% if character.run_details and run_id in character.run_details %}
+                                                {% set run_detail = character.run_details[run_id] %}
+                                                {% set player_ilvl = None %}
+
+                                                <!-- Debug output -->
+                                                <div class="d-none">
+                                                    Run ID: {{ run_id }}<br>
+                                                    Players: {{ run_detail.players|length }}<br>
+                                                    {% for player in run_detail.players %}
+                                                    Player: {{ player.character_name }} / ILvl:
+                                                    {{ player.item_level }}<br>
+                                                    {% endfor %}
+                                                    Character name looking for: {{ character.name|lower }}<br>
+                                                </div>
+
+                                                {% for player in run_detail.players %}
+                                                {% if player.character_name|lower == character.name|lower %}
+                                                {% set player_ilvl = player.item_level %}
+                                                {% endif %}
+                                                {% endfor %}
+
+                                                {% if player_ilvl is not none and run_detail.average_item_level %}
+                                                {{ player_ilvl }}
+                                                {% set ilvl_delta = (player_ilvl -
+                                                run_detail.average_item_level)|round(1) %}
+                                                {% if ilvl_delta < -5 %} <span class="badge bg-danger">
+                                                    {{ ilvl_delta }}</span>
+                                                    {% elif ilvl_delta > 5 %}
+                                                    <span class="badge bg-success">+{{ ilvl_delta }}</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">{{ ilvl_delta }}</span>
+                                                    {% endif %}
+                                                    {% else %}
+                                                    N/A
+                                                    {% endif %}
+                                                    {% else %}
+                                                    N/A
+                                                    {% endif %}
+                                            </td>
+                                            <td>
+                                                {% set run_id = run.keystone_run_id %}
+                                                {% if character.run_details and run_id in character.run_details %}
+                                                {% set run_detail = character.run_details[run_id] %}
+                                                {% set class_counts = {} %}
+                                                {% for player in run_detail.players %}
+                                                {% set class_name = player.character_class.name if
+                                                player.character_class is mapping else player.character_class %}
+                                                {% if class_name in class_counts %}
+                                                {% set _ = class_counts.update({class_name: class_counts[class_name] +
+                                                1}) %}
+                                                {% else %}
+                                                {% set _ = class_counts.update({class_name: 1}) %}
+                                                {% endif %}
+                                                {% endfor %}
+
+                                                {% for class_name, count in class_counts.items() %}
+                                                <span class="class-icon class-{{ class_name|lower|replace(' ', '') }}"
+                                                    title="{{ class_name }}">{{ count }}</span>
+                                                {% endfor %}
+                                                {% else %}
+                                                N/A
+                                                {% endif %}
+                                            </td>
+                                            <td>
                                                 {% for affix in run.affixes %}
                                                 <img src="{{ affix.icon_url }}" alt="{{ affix.name }}"
                                                     title="{{ affix.name }}" width="20" height="20" class="me-1">
@@ -106,7 +173,7 @@
                                         {% endfor %}
                                         {% else %}
                                         <tr>
-                                            <td colspan="9" class="text-center">No recent runs found.</td>
+                                            <td colspan="11" class="text-center">No recent runs found.</td>
                                         </tr>
                                         {% endif %}
                                     </tbody>
@@ -135,6 +202,8 @@
                                             <th>Par Time</th>
                                             <th>Upgrades</th>
                                             <th>Score</th>
+                                            <th>iLvl (Delta)</th>
+                                            <th>Group Comp</th>
                                             <th>Affixes</th>
                                             <th></th>
                                         </tr>
@@ -170,6 +239,60 @@
                                             </td>
                                             <td>{{ run.score|round(1) }}</td>
                                             <td>
+                                                {% set run_id = run.keystone_run_id %}
+                                                {% if character.run_details and run_id in character.run_details %}
+                                                {% set run_detail = character.run_details[run_id] %}
+                                                {% set player_ilvl = None %}
+
+                                                {% for player in run_detail.players %}
+                                                {% if player.character_name|lower == character.name|lower %}
+                                                {% set player_ilvl = player.item_level %}
+                                                {% endif %}
+                                                {% endfor %}
+
+                                                {% if player_ilvl is not none and run_detail.average_item_level %}
+                                                {{ player_ilvl }}
+                                                {% set ilvl_delta = (player_ilvl -
+                                                run_detail.average_item_level)|round(1) %}
+                                                {% if ilvl_delta < -5 %} <span class="badge bg-danger">
+                                                    {{ ilvl_delta }}</span>
+                                                    {% elif ilvl_delta > 5 %}
+                                                    <span class="badge bg-success">+{{ ilvl_delta }}</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">{{ ilvl_delta }}</span>
+                                                    {% endif %}
+                                                    {% else %}
+                                                    N/A
+                                                    {% endif %}
+                                                    {% else %}
+                                                    N/A
+                                                    {% endif %}
+                                            </td>
+                                            <td>
+                                                {% set run_id = run.keystone_run_id %}
+                                                {% if character.run_details and run_id in character.run_details %}
+                                                {% set run_detail = character.run_details[run_id] %}
+                                                {% set class_counts = {} %}
+                                                {% for player in run_detail.players %}
+                                                {% set class_name = player.character_class.name if
+                                                player.character_class is mapping else player.character_class %}
+                                                {% if class_name in class_counts %}
+                                                {% set _ = class_counts.update({class_name: class_counts[class_name] +
+                                                1}) %}
+                                                {% else %}
+                                                {% set _ = class_counts.update({class_name: 1}) %}
+                                                {% endif %}
+                                                {% endfor %}
+
+                                                {% for class_name, count in class_counts.items() %}
+                                                <span class="class-icon class-{{ class_name|lower|replace(' ', '') }}"
+                                                    title="{{ class_name }}">{{ count }}</span>
+                                                {% endfor %}
+                                                {% else %}
+                                                N/A
+                                                {% endif %}
+                                            </td>
+                                            <td>
                                                 {% for affix in run.affixes %}
                                                 <img src="{{ affix.icon_url }}" alt="{{ affix.name }}"
                                                     title="{{ affix.name }}" width="20" height="20" class="me-1">
@@ -183,7 +306,7 @@
                                         {% endfor %}
                                         {% else %}
                                         <tr>
-                                            <td colspan="9" class="text-center">No best runs found.</td>
+                                            <td colspan="11" class="text-center">No best runs found.</td>
                                         </tr>
                                         {% endif %}
                                     </tbody>

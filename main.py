@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 import httpx
 import os
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Union
 
 app = FastAPI(title="WoW Mythic+ Character Lookup")
 
@@ -37,6 +37,45 @@ class MythicPlusRun(BaseModel):
     url: str
     affixes: List[Affix]
 
+class CharacterClass(BaseModel):
+    id: int
+    name: str
+    slug: str
+    
+    def __hash__(self):
+        return hash((self.id, self.name, self.slug))
+    
+    def __eq__(self, other):
+        if isinstance(other, CharacterClass):
+            return self.id == other.id
+        return False
+
+class CharacterSpec(BaseModel):
+    id: int
+    name: str
+    role: str
+    
+    def __hash__(self):
+        return hash((self.id, self.name, self.role))
+    
+    def __eq__(self, other):
+        if isinstance(other, CharacterSpec):
+            return self.id == other.id
+        return False
+
+class RunDetailPlayer(BaseModel):
+    character_name: str
+    character_class: Union[CharacterClass, str]
+    character_spec: Union[CharacterSpec, str]
+    profile_url: str
+    item_level: Optional[int] = None
+
+class RunDetail(BaseModel):
+    run_id: int
+    keystone_run_id: int
+    players: List[RunDetailPlayer]
+    average_item_level: Optional[float] = None
+
 class CharacterMythicPlusData(BaseModel):
     mythic_plus_recent_runs: Optional[List[MythicPlusRun]] = None
     mythic_plus_best_runs: Optional[List[MythicPlusRun]] = None
@@ -46,6 +85,72 @@ class CharacterMythicPlusData(BaseModel):
     active_spec_name: str
     profile_url: str
     thumbnail_url: str
+    run_details: Optional[Dict[int, RunDetail]] = None
+
+async def fetch_run_details(run_id: int, season: str = "current"):
+    """Fetch detailed information about a specific Mythic+ run."""
+    url = f"{RAIDER_IO_API_URL}/mythic-plus/run-details"
+    params = {
+        "season": season,
+        "id": run_id
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            
+            if response.status_code != 200:
+                print(f"API error for run {run_id}: Status {response.status_code}")
+                print(f"Response: {response.text}")
+                return None
+            
+            data = response.json()
+            
+            players = []
+            item_levels = []
+            
+            # Extract players info and item levels
+            for roster_slot in data.get("roster", []):
+                player = roster_slot.get("character", {})
+                
+                try:
+                    # Debug logging for understanding the data structure
+                    print(f"Processing player data: {player.get('name')}")
+                    print(f"Class data: {player.get('class')}")
+                    print(f"Item level path: {player.get('gear', {}).get('item_level_equipped')}")
+                    
+                    player_data = RunDetailPlayer(
+                        character_name=player.get("name", ""),
+                        character_class=player.get("class", {}),
+                        character_spec=player.get("spec", {}),
+                        profile_url=player.get("profile_url", ""),
+                        item_level=player.get("gear", {}).get("item_level_equipped")
+                    )
+                    players.append(player_data)
+                    
+                    # Add item level to the list if available
+                    if player_data.item_level:
+                        item_levels.append(player_data.item_level)
+                except Exception as e:
+                    print(f"Error parsing player data: {str(e)}")
+                    print(f"Player data: {player}")
+            
+            # Calculate average item level if we have data
+            average_item_level = None
+            if item_levels:
+                average_item_level = sum(item_levels) / len(item_levels)
+            
+            run_detail = RunDetail(
+                run_id=run_id,
+                keystone_run_id=data.get("keystone_run_id", 0),
+                players=players,
+                average_item_level=average_item_level
+            )
+            
+            return run_detail
+    except Exception as e:
+        print(f"Exception fetching run {run_id} with season {season}: {str(e)}")
+        return None
 
 async def fetch_character_data(region: str, realm: str, character_name: str):
     """Fetch character Mythic+ data from Raider.IO API."""
@@ -75,8 +180,39 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
             "profile_url": data.get("profile_url", ""),
             "thumbnail_url": data.get("thumbnail_url", ""),
             "mythic_plus_recent_runs": data.get("mythic_plus_recent_runs", []),
-            "mythic_plus_best_runs": data.get("mythic_plus_best_runs", [])
+            "mythic_plus_best_runs": data.get("mythic_plus_best_runs", []),
+            "run_details": {}
         }
+        
+        # Fetch detailed information for each best run
+        if character_data["mythic_plus_best_runs"]:
+            run_details = {}
+            for run in character_data["mythic_plus_best_runs"]:
+                try:
+                    run_id = run.get("keystone_run_id")
+                    if run_id:
+                        # Use the current TWW season
+                        season = "season-tww-2"
+                        
+                        # Try to extract season from URL, but default to season-tww-2 if not found
+                        url_parts = run.get("url", "").split("/")
+                        if len(url_parts) > 3 and url_parts[3].startswith("season-"):
+                            extracted_season = url_parts[3]
+                            print(f"Found season in URL: {extracted_season}")
+                            # Only use extracted season if it looks valid
+                            if extracted_season.startswith("season-"):
+                                season = extracted_season
+                        
+                        print(f"Fetching details for run {run_id} using season: {season}")
+                        run_detail = await fetch_run_details(run_id, season)
+                        if run_detail:
+                            run_details[run_id] = run_detail
+                except Exception as e:
+                    # Log the error but continue with other runs
+                    print(f"Error processing run {run_id}: {str(e)}")
+                    print(f"Season used: {season}")
+            
+            character_data["run_details"] = run_details
         
         return character_data
 
