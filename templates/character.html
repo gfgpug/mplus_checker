@@ -69,7 +69,16 @@
                                             <td>{{ run.dungeon }}</td>
                                             <td class="text-center">{{ run.mythic_level }}</td>
                                             <td>{{ run.completed_at.split('T')[0] }}</td>
-                                            <td>{{ (run.clear_time_ms / 1000 / 60)|round(1) }} min</td>
+                                            <td>
+                                                {{ (run.clear_time_ms / 1000 / 60)|round(1) }} min
+                                                {% set time_diff_percent = ((run.clear_time_ms - run.par_time_ms) /
+                                                run.par_time_ms * 100)|round(1) %}
+                                                {% if time_diff_percent < 0 %} <span class="badge bg-success">
+                                                    {{ time_diff_percent }}%</span>
+                                                    {% else %}
+                                                    <span class="badge bg-danger">+{{ time_diff_percent }}%</span>
+                                                    {% endif %}
+                                            </td>
                                             <td>{{ (run.par_time_ms / 1000 / 60)|round(1) }} min</td>
                                             <td class="text-center">
                                                 {% if run.num_keystone_upgrades == 0 %}
@@ -137,7 +146,16 @@
                                             <td>{{ run.dungeon }}</td>
                                             <td class="text-center">{{ run.mythic_level }}</td>
                                             <td>{{ run.completed_at.split('T')[0] }}</td>
-                                            <td>{{ (run.clear_time_ms / 1000 / 60)|round(1) }} min</td>
+                                            <td>
+                                                {{ (run.clear_time_ms / 1000 / 60)|round(1) }} min
+                                                {% set time_diff_percent = ((run.clear_time_ms - run.par_time_ms) /
+                                                run.par_time_ms * 100)|round(1) %}
+                                                {% if time_diff_percent < 0 %} <span class="badge bg-success">
+                                                    {{ time_diff_percent }}%</span>
+                                                    {% else %}
+                                                    <span class="badge bg-danger">+{{ time_diff_percent }}%</span>
+                                                    {% endif %}
+                                            </td>
                                             <td>{{ (run.par_time_ms / 1000 / 60)|round(1) }} min</td>
                                             <td class="text-center">
                                                 {% if run.num_keystone_upgrades == 0 %}
