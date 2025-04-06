@@ -1,5 +1,6 @@
+import asyncio
 import os
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Tuple
 
 import httpx
 from dotenv import load_dotenv
@@ -144,6 +145,42 @@ async def fetch_run_details(run_id: int, season: str = "season-tww-2"):
         print(f"Exception fetching run {run_id} with season {season}: {str(e)}")
         return None
 
+async def fetch_run_details_concurrently(run_ids: List[Tuple[int, str]]) -> Dict[int, RunDetail]:
+    """Fetch details for multiple runs concurrently using asyncio.gather()."""
+    # Create task info (run_id, season, task)
+    task_info = []
+    
+    for run_id, url in run_ids:
+        # Extract season from URL if possible
+        season = "season-tww-2"  # Default
+        url_parts = url.split("/")
+        if len(url_parts) > 3 and url_parts[3].startswith("season-"):
+            extracted_season = url_parts[3]
+            # Only use extracted season if it looks valid
+            if extracted_season.startswith("season-"):
+                season = extracted_season
+        
+        print(f"Creating task for run {run_id} using season: {season}")
+        task_info.append((run_id, season))
+    
+    # Use gather to execute all fetch operations concurrently
+    # First create a list of coroutines
+    tasks = [fetch_run_details(run_id, season) for run_id, season in task_info]
+    
+    # Execute all tasks concurrently with gather
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Create run details dictionary from results
+    run_details_dict = {}
+    for i, result in enumerate(results):
+        run_id = task_info[i][0]
+        if isinstance(result, Exception):
+            print(f"Error processing run {run_id}: {str(result)}")
+        elif result:  # Check if result is not None
+            run_details_dict[run_id] = result
+    
+    return run_details_dict
+
 async def fetch_character_data(region: str, realm: str, character_name: str):
     """Fetch character Mythic+ data from Raider.IO API and enrich with additional details."""
     url = f"{RAIDER_IO_API_URL}/characters/profile"
@@ -181,32 +218,15 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
         recent_runs = data.get("mythic_plus_recent_runs", [])
         best_runs = data.get("mythic_plus_best_runs", [])
         
-        # Fetch detailed information for all runs
+        # Collect run IDs and URLs for all runs
         run_ids = set()
         for run in recent_runs + best_runs:
             run_id = run.get("keystone_run_id")
             if run_id:
                 run_ids.add((run_id, run.get("url", "")))
         
-        # Fetch details for all unique run IDs
-        run_details_dict = {}
-        for run_id, url in run_ids:
-            try:
-                # Extract season from URL if possible
-                season = "season-tww-2"  # Default
-                url_parts = url.split("/")
-                if len(url_parts) > 3 and url_parts[3].startswith("season-"):
-                    extracted_season = url_parts[3]
-                    # Only use extracted season if it looks valid
-                    if extracted_season.startswith("season-"):
-                        season = extracted_season
-                
-                print(f"Fetching details for run {run_id} using season: {season}")
-                run_detail = await fetch_run_details(run_id, season)
-                if run_detail:
-                    run_details_dict[run_id] = run_detail
-            except Exception as e:
-                print(f"Error processing run {run_id}: {str(e)}")
+        # Fetch details for all unique run IDs concurrently
+        run_details_dict = await fetch_run_details_concurrently(list(run_ids))
         
         # Enhanced processing for recent runs
         for run in recent_runs:
