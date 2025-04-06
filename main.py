@@ -1,20 +1,24 @@
+import os
+from typing import Dict, List, Literal, Optional
+
+import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from typing import Literal
-import httpx
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Union
 
 app = FastAPI(title="WoW Mythic+ Character Lookup")
 
 # Set up templates and static files
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+load_dotenv()
 
 # Raider.IO API base URL
 RAIDER_IO_API_URL = "https://raider.io/api/v1"
+RIO_API_KEY = os.getenv("RIO_API_KEY")
 
 # Models for API responses
 class Affix(BaseModel):
@@ -66,6 +70,7 @@ async def fetch_run_details(run_id: int, season: str = "season-tww-2"):
     """Fetch detailed information about a specific Mythic+ run."""
     url = f"{RAIDER_IO_API_URL}/mythic-plus/run-details"
     params = {
+        "access_key": RIO_API_KEY,
         "season": season,
         "id": run_id
     }
@@ -143,6 +148,7 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
     """Fetch character Mythic+ data from Raider.IO API and enrich with additional details."""
     url = f"{RAIDER_IO_API_URL}/characters/profile"
     params = {
+        "access_key": RIO_API_KEY,
         "region": region,
         "realm": realm,
         "name": character_name,
