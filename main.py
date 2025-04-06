@@ -2,8 +2,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from typing import Literal
 import httpx
-import os
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Union
 
@@ -37,38 +37,13 @@ class MythicPlusRun(BaseModel):
     url: str
     affixes: List[Affix]
 
-class CharacterClass(BaseModel):
-    id: int
-    name: str
-    slug: str
-    
-    def __hash__(self):
-        return hash((self.id, self.name, self.slug))
-    
-    def __eq__(self, other):
-        if isinstance(other, CharacterClass):
-            return self.id == other.id
-        return False
-
-class CharacterSpec(BaseModel):
-    id: int
-    name: str
-    role: str
-    
-    def __hash__(self):
-        return hash((self.id, self.name, self.role))
-    
-    def __eq__(self, other):
-        if isinstance(other, CharacterSpec):
-            return self.id == other.id
-        return False
 
 class RunDetailPlayer(BaseModel):
     character_name: str
-    character_class: Union[CharacterClass, str]
-    character_spec: Union[CharacterSpec, str]
+    character_class: str
+    character_role: Literal["tank", "dps", "healer" ]
     profile_url: str
-    item_level: Optional[int] = None
+    item_level: Optional[float] = None
 
 class RunDetail(BaseModel):
     run_id: int
@@ -87,7 +62,7 @@ class CharacterMythicPlusData(BaseModel):
     thumbnail_url: str
     run_details: Optional[Dict[int, RunDetail]] = None
 
-async def fetch_run_details(run_id: int, season: str = "current"):
+async def fetch_run_details(run_id: int, season: str = "season-tww-2"):
     """Fetch detailed information about a specific Mythic+ run."""
     url = f"{RAIDER_IO_API_URL}/mythic-plus/run-details"
     params = {
@@ -114,38 +89,45 @@ async def fetch_run_details(run_id: int, season: str = "current"):
                 player = roster_slot.get("character", {})
                 
                 try:
-                    # Debug logging for understanding the data structure
-                    print(f"Processing player data: {player.get('name')}")
-                    print(f"Class data: {player.get('class')}")
-                    print(f"Item level path: {player.get('gear', {}).get('item_level_equipped')}")
+                    # Debug logging
+
+                    player_name = player.get('name')
+                    player_class = (player.get('class').get('slug'))
+                    player_role = (player.get('spec').get('role'))
+                    item_level = round(roster_slot.get("items", {}).get("item_level_equipped"), 1)
+
+                    print(f"Player name: {player_name}")
+                    print(f"Class: {player_class}")
+                    print(f"Item level: {item_level}")
                     
                     player_data = RunDetailPlayer(
-                        character_name=player.get("name", ""),
-                        character_class=player.get("class", {}),
-                        character_spec=player.get("spec", {}),
+                        character_name=player_name,
+                        character_class=player_class,
+                        character_role=player_role,
                         profile_url=player.get("profile_url", ""),
-                        item_level=player.get("gear", {}).get("item_level_equipped")
+                        item_level=item_level
                     )
                     players.append(player_data)
                     
                     # Add item level to the list if available
-                    if player_data.item_level:
+                    if player_data.item_level is not None:
                         item_levels.append(player_data.item_level)
                 except Exception as e:
                     print(f"Error parsing player data: {str(e)}")
-                    print(f"Player data: {player}")
             
             # Calculate average item level if we have data
             average_item_level = None
+            print(f"Item levels:{item_levels}")
             if item_levels:
                 average_item_level = sum(item_levels) / len(item_levels)
-            
+            print(f"Average item levels:{average_item_level}")
             run_detail = RunDetail(
                 run_id=run_id,
                 keystone_run_id=data.get("keystone_run_id", 0),
                 players=players,
                 average_item_level=average_item_level
             )
+            print(run_detail)
             
             return run_detail
     except Exception as e:

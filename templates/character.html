@@ -117,7 +117,8 @@
                                                 {% endif %}
                                                 {% endfor %}
 
-                                                {% if player_ilvl is not none and run_detail.average_item_level %}
+                                                {% if player_ilvl is not none and run_detail.average_item_level is not
+                                                none %}
                                                 {{ player_ilvl }}
                                                 {% set ilvl_delta = (player_ilvl -
                                                 run_detail.average_item_level)|round(1) %}
@@ -128,6 +129,8 @@
                                                     {% else %}
                                                     <span class="badge bg-secondary">{{ ilvl_delta }}</span>
                                                     {% endif %}
+                                                    {% elif player_ilvl is not none %}
+                                                    {{ player_ilvl }} <span class="badge bg-info">no avg</span>
                                                     {% else %}
                                                     N/A
                                                     {% endif %}
@@ -250,7 +253,8 @@
                                                 {% endif %}
                                                 {% endfor %}
 
-                                                {% if player_ilvl is not none and run_detail.average_item_level %}
+                                                {% if player_ilvl is not none and run_detail.average_item_level is not
+                                                none %}
                                                 {{ player_ilvl }}
                                                 {% set ilvl_delta = (player_ilvl -
                                                 run_detail.average_item_level)|round(1) %}
@@ -261,6 +265,8 @@
                                                     {% else %}
                                                     <span class="badge bg-secondary">{{ ilvl_delta }}</span>
                                                     {% endif %}
+                                                    {% elif player_ilvl is not none %}
+                                                    {{ player_ilvl }} <span class="badge bg-info">no avg</span>
                                                     {% else %}
                                                     N/A
                                                     {% endif %}
