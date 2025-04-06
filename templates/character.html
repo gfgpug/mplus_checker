@@ -6,6 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{{ character.name }} - Mythic+ Runs</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
         <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
     </head>
 
@@ -60,7 +61,7 @@
                                             <th>Upgrades</th>
                                             <th>Score</th>
                                             <th>iLvl (Delta)</th>
-                                            <th>Group Comp</th>
+                                            <th>Role</th>
                                             <th>Affixes</th>
                                             <th></th>
                                         </tr>
@@ -112,10 +113,23 @@
                                                     {% endif %}
                                             </td>
                                             <td>
-                                                {% if run.class_composition %}
-                                                {% for class_name, count in run.class_composition.items() %}
-                                                <span class="class-icon class-{{ class_name|lower|replace(' ', '') }}"
-                                                    title="{{ class_name }}">{{ count }}</span>
+                                                {% if run.run_id in character.run_details %}
+                                                {% set run_detail = character.run_details[run.run_id] %}
+                                                {% for player in run_detail.players %}
+                                                {% if player.character_name|lower == character.name|lower %}
+                                                <span
+                                                    class="role-text role-{{ player.character_class|lower|replace(' ', '') }}">
+                                                    {% if player.character_role == "tank" %}
+                                                    Tank
+                                                    {% elif player.character_role == "healer" %}
+                                                    Healer
+                                                    {% elif player.character_role == "dps" %}
+                                                    DPS
+                                                    {% else %}
+                                                    Unknown
+                                                    {% endif %}
+                                                </span>
+                                                {% endif %}
                                                 {% endfor %}
                                                 {% else %}
                                                 N/A
@@ -165,7 +179,7 @@
                                             <th>Upgrades</th>
                                             <th>Score</th>
                                             <th>iLvl (Delta)</th>
-                                            <th>Group Comp</th>
+                                            <th>Role</th>
                                             <th>Affixes</th>
                                             <th></th>
                                         </tr>
@@ -217,10 +231,23 @@
                                                     {% endif %}
                                             </td>
                                             <td>
-                                                {% if run.class_composition %}
-                                                {% for class_name, count in run.class_composition.items() %}
-                                                <span class="class-icon class-{{ class_name|lower|replace(' ', '') }}"
-                                                    title="{{ class_name }}">{{ count }}</span>
+                                                {% if run.run_id in character.run_details %}
+                                                {% set run_detail = character.run_details[run.run_id] %}
+                                                {% for player in run_detail.players %}
+                                                {% if player.character_name|lower == character.name|lower %}
+                                                <span
+                                                    class="role-text role-{{ player.character_class|lower|replace(' ', '') }}">
+                                                    {% if player.character_role == "tank" %}
+                                                    Tank
+                                                    {% elif player.character_role == "healer" %}
+                                                    Healer
+                                                    {% elif player.character_role == "dps" %}
+                                                    DPS
+                                                    {% else %}
+                                                    Unknown
+                                                    {% endif %}
+                                                </span>
+                                                {% endif %}
                                                 {% endfor %}
                                                 {% else %}
                                                 N/A

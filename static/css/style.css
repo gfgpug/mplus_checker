@@ -100,3 +100,93 @@ td img {
         font-size: 0.875rem;
     }
 }
+
+/* Role text styling */
+.role-text {
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    text-align: center;
+    min-width: 60px;
+}
+
+/* Role colors based on class */
+.role-warrior {
+    color: #C79C6E;
+    background-color: rgba(199, 156, 110, 0.1);
+    border: 1px solid rgba(199, 156, 110, 0.3);
+}
+
+.role-paladin {
+    color: #F58CBA;
+    background-color: rgba(245, 140, 186, 0.1);
+    border: 1px solid rgba(245, 140, 186, 0.3);
+}
+
+.role-hunter {
+    color: #ABD473;
+    background-color: rgba(171, 212, 115, 0.1);
+    border: 1px solid rgba(171, 212, 115, 0.3);
+}
+
+.role-rogue {
+    color: #FFF569;
+    background-color: rgba(255, 245, 105, 0.1);
+    border: 1px solid rgba(255, 245, 105, 0.3);
+}
+
+.role-priest {
+    color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    text-shadow: 0 0 1px rgba(0, 0, 0, 0.8);
+}
+
+.role-deathknight {
+    color: #C41F3B;
+    background-color: rgba(196, 31, 59, 0.1);
+    border: 1px solid rgba(196, 31, 59, 0.3);
+}
+
+.role-shaman {
+    color: #0070DE;
+    background-color: rgba(0, 112, 222, 0.1);
+    border: 1px solid rgba(0, 112, 222, 0.3);
+}
+
+.role-mage {
+    color: #69CCF0;
+    background-color: rgba(105, 204, 240, 0.1);
+    border: 1px solid rgba(105, 204, 240, 0.3);
+}
+
+.role-warlock {
+    color: #9482C9;
+    background-color: rgba(148, 130, 201, 0.1);
+    border: 1px solid rgba(148, 130, 201, 0.3);
+}
+
+.role-monk {
+    color: #00FF96;
+    background-color: rgba(0, 255, 150, 0.1);
+    border: 1px solid rgba(0, 255, 150, 0.3);
+}
+
+.role-druid {
+    color: #FF7D0A;
+    background-color: rgba(255, 125, 10, 0.1);
+    border: 1px solid rgba(255, 125, 10, 0.3);
+}
+
+.role-demonhunter {
+    color: #A330C9;
+    background-color: rgba(163, 48, 201, 0.1);
+    border: 1px solid rgba(163, 48, 201, 0.3);
+}
+
+.role-evoker {
+    color: #33937F;
+    background-color: rgba(51, 147, 127, 0.1);
+    border: 1px solid rgba(51, 147, 127, 0.3);
+}

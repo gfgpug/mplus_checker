@@ -206,6 +206,9 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
         for run in recent_runs:
             enhanced_run = run.copy()
             
+            # Store the run ID for lookup in template
+            enhanced_run["run_id"] = run.get("keystone_run_id")
+            
             # Add pre-calculated fields for template
             run_id = run.get("keystone_run_id")
             
@@ -255,6 +258,9 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
         # Same enhanced processing for best runs
         for run in best_runs:
             enhanced_run = run.copy()
+            
+            # Store the run ID for lookup in template
+            enhanced_run["run_id"] = run.get("keystone_run_id")
             
             # Add pre-calculated fields for template
             run_id = run.get("keystone_run_id")
