@@ -89,15 +89,18 @@ async def fetch_run_details(run_id: int, season: str = "season-tww-2"):
                 player = roster_slot.get("character", {})
                 
                 try:
-                    # Debug logging
-
                     player_name = player.get('name')
-                    player_class = (player.get('class').get('slug'))
-                    player_role = (player.get('spec').get('role'))
-                    item_level = round(roster_slot.get("items", {}).get("item_level_equipped"), 1)
-
+                    player_class = player.get('class', {}).get('slug')
+                    player_role = player.get('spec', {}).get('role')
+                    item_level = roster_slot.get("items", {}).get("item_level_equipped")
+                    
+                    # Make sure we have a valid item level (convert to float and round)
+                    if item_level is not None:
+                        item_level = round(float(item_level), 1)
+                    
                     print(f"Player name: {player_name}")
                     print(f"Class: {player_class}")
+                    print(f"Role: {player_role}")
                     print(f"Item level: {item_level}")
                     
                     player_data = RunDetailPlayer(
@@ -110,24 +113,26 @@ async def fetch_run_details(run_id: int, season: str = "season-tww-2"):
                     players.append(player_data)
                     
                     # Add item level to the list if available
-                    if player_data.item_level is not None:
-                        item_levels.append(player_data.item_level)
+                    if item_level is not None:
+                        item_levels.append(item_level)
                 except Exception as e:
                     print(f"Error parsing player data: {str(e)}")
+                    # Print the raw data to understand what's happening
+                    print(f"Raw player data: {player}")
+                    print(f"Raw roster slot: {roster_slot}")
             
             # Calculate average item level if we have data
             average_item_level = None
-            print(f"Item levels:{item_levels}")
             if item_levels:
-                average_item_level = sum(item_levels) / len(item_levels)
-            print(f"Average item levels:{average_item_level}")
+                average_item_level = round(sum(item_levels) / len(item_levels), 1)
+                print(f"Average item level: {average_item_level} from {item_levels}")
+            
             run_detail = RunDetail(
                 run_id=run_id,
                 keystone_run_id=data.get("keystone_run_id", 0),
                 players=players,
                 average_item_level=average_item_level
             )
-            print(run_detail)
             
             return run_detail
     except Exception as e:
@@ -135,7 +140,7 @@ async def fetch_run_details(run_id: int, season: str = "season-tww-2"):
         return None
 
 async def fetch_character_data(region: str, realm: str, character_name: str):
-    """Fetch character Mythic+ data from Raider.IO API."""
+    """Fetch character Mythic+ data from Raider.IO API and enrich with additional details."""
     url = f"{RAIDER_IO_API_URL}/characters/profile"
     params = {
         "region": region,
@@ -161,40 +166,144 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
             "active_spec_name": data.get("active_spec_name", ""),
             "profile_url": data.get("profile_url", ""),
             "thumbnail_url": data.get("thumbnail_url", ""),
-            "mythic_plus_recent_runs": data.get("mythic_plus_recent_runs", []),
-            "mythic_plus_best_runs": data.get("mythic_plus_best_runs", []),
+            "mythic_plus_recent_runs": [],
+            "mythic_plus_best_runs": [],
             "run_details": {}
         }
         
-        # Fetch detailed information for each best run
-        if character_data["mythic_plus_best_runs"]:
-            run_details = {}
-            for run in character_data["mythic_plus_best_runs"]:
-                try:
-                    run_id = run.get("keystone_run_id")
-                    if run_id:
-                        # Use the current TWW season
-                        season = "season-tww-2"
-                        
-                        # Try to extract season from URL, but default to season-tww-2 if not found
-                        url_parts = run.get("url", "").split("/")
-                        if len(url_parts) > 3 and url_parts[3].startswith("season-"):
-                            extracted_season = url_parts[3]
-                            print(f"Found season in URL: {extracted_season}")
-                            # Only use extracted season if it looks valid
-                            if extracted_season.startswith("season-"):
-                                season = extracted_season
-                        
-                        print(f"Fetching details for run {run_id} using season: {season}")
-                        run_detail = await fetch_run_details(run_id, season)
-                        if run_detail:
-                            run_details[run_id] = run_detail
-                except Exception as e:
-                    # Log the error but continue with other runs
-                    print(f"Error processing run {run_id}: {str(e)}")
-                    print(f"Season used: {season}")
+        # Process runs (both recent and best)
+        recent_runs = data.get("mythic_plus_recent_runs", [])
+        best_runs = data.get("mythic_plus_best_runs", [])
+        
+        # Fetch detailed information for all runs
+        run_ids = set()
+        for run in recent_runs + best_runs:
+            run_id = run.get("keystone_run_id")
+            if run_id:
+                run_ids.add((run_id, run.get("url", "")))
+        
+        # Fetch details for all unique run IDs
+        run_details_dict = {}
+        for run_id, url in run_ids:
+            try:
+                # Extract season from URL if possible
+                season = "season-tww-2"  # Default
+                url_parts = url.split("/")
+                if len(url_parts) > 3 and url_parts[3].startswith("season-"):
+                    extracted_season = url_parts[3]
+                    # Only use extracted season if it looks valid
+                    if extracted_season.startswith("season-"):
+                        season = extracted_season
+                
+                print(f"Fetching details for run {run_id} using season: {season}")
+                run_detail = await fetch_run_details(run_id, season)
+                if run_detail:
+                    run_details_dict[run_id] = run_detail
+            except Exception as e:
+                print(f"Error processing run {run_id}: {str(e)}")
+        
+        # Enhanced processing for recent runs
+        for run in recent_runs:
+            enhanced_run = run.copy()
             
-            character_data["run_details"] = run_details
+            # Add pre-calculated fields for template
+            run_id = run.get("keystone_run_id")
+            
+            if run_id in run_details_dict:
+                run_detail = run_details_dict[run_id]
+                
+                # Calculate the enhanced fields
+                enhanced_run["time_diff_percent"] = round(((run["clear_time_ms"] - run["par_time_ms"]) / run["par_time_ms"] * 100), 1)
+                enhanced_run["clear_time_minutes"] = round(run["clear_time_ms"] / 1000 / 60, 1)
+                enhanced_run["par_time_minutes"] = round(run["par_time_ms"] / 1000 / 60, 1)
+                
+                # Find player's item level and calculate delta
+                player_ilvl = None
+                avg_ilvl = run_detail.average_item_level
+                
+                for player in run_detail.players:
+                    if player.character_name.lower() == character_data["name"].lower():
+                        player_ilvl = player.item_level
+                        break
+                
+                enhanced_run["player_ilvl"] = player_ilvl
+                enhanced_run["avg_ilvl"] = avg_ilvl
+                enhanced_run["ilvl_delta"] = round(player_ilvl - avg_ilvl, 1) if player_ilvl is not None and avg_ilvl is not None else None
+                
+                # Calculate class composition for the group
+                class_counts = {}
+                for player in run_detail.players:
+                    class_name = player.character_class
+                    if class_name in class_counts:
+                        class_counts[class_name] += 1
+                    else:
+                        class_counts[class_name] = 1
+                
+                enhanced_run["class_composition"] = class_counts
+            else:
+                # Default values if run details not available
+                enhanced_run["time_diff_percent"] = round(((run["clear_time_ms"] - run["par_time_ms"]) / run["par_time_ms"] * 100), 1)
+                enhanced_run["clear_time_minutes"] = round(run["clear_time_ms"] / 1000 / 60, 1)
+                enhanced_run["par_time_minutes"] = round(run["par_time_ms"] / 1000 / 60, 1)
+                enhanced_run["player_ilvl"] = None
+                enhanced_run["avg_ilvl"] = None
+                enhanced_run["ilvl_delta"] = None
+                enhanced_run["class_composition"] = {}
+            
+            character_data["mythic_plus_recent_runs"].append(enhanced_run)
+        
+        # Same enhanced processing for best runs
+        for run in best_runs:
+            enhanced_run = run.copy()
+            
+            # Add pre-calculated fields for template
+            run_id = run.get("keystone_run_id")
+            
+            if run_id in run_details_dict:
+                run_detail = run_details_dict[run_id]
+                
+                # Calculate the enhanced fields
+                enhanced_run["time_diff_percent"] = round(((run["clear_time_ms"] - run["par_time_ms"]) / run["par_time_ms"] * 100), 1)
+                enhanced_run["clear_time_minutes"] = round(run["clear_time_ms"] / 1000 / 60, 1)
+                enhanced_run["par_time_minutes"] = round(run["par_time_ms"] / 1000 / 60, 1)
+                
+                # Find player's item level and calculate delta
+                player_ilvl = None
+                avg_ilvl = run_detail.average_item_level
+                
+                for player in run_detail.players:
+                    if player.character_name.lower() == character_data["name"].lower():
+                        player_ilvl = player.item_level
+                        break
+                
+                enhanced_run["player_ilvl"] = player_ilvl
+                enhanced_run["avg_ilvl"] = avg_ilvl
+                enhanced_run["ilvl_delta"] = round(player_ilvl - avg_ilvl, 1) if player_ilvl is not None and avg_ilvl is not None else None
+                
+                # Calculate class composition for the group
+                class_counts = {}
+                for player in run_detail.players:
+                    class_name = player.character_class
+                    if class_name in class_counts:
+                        class_counts[class_name] += 1
+                    else:
+                        class_counts[class_name] = 1
+                
+                enhanced_run["class_composition"] = class_counts
+            else:
+                # Default values if run details not available
+                enhanced_run["time_diff_percent"] = round(((run["clear_time_ms"] - run["par_time_ms"]) / run["par_time_ms"] * 100), 1)
+                enhanced_run["clear_time_minutes"] = round(run["clear_time_ms"] / 1000 / 60, 1)
+                enhanced_run["par_time_minutes"] = round(run["par_time_ms"] / 1000 / 60, 1)
+                enhanced_run["player_ilvl"] = None
+                enhanced_run["avg_ilvl"] = None
+                enhanced_run["ilvl_delta"] = None
+                enhanced_run["class_composition"] = {}
+            
+            character_data["mythic_plus_best_runs"].append(enhanced_run)
+        
+        # Store the run details for reference
+        character_data["run_details"] = run_details_dict
         
         return character_data
 
