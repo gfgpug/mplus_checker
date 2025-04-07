@@ -194,23 +194,35 @@ def enhance_run(run: Dict[str, Any], run_details_dict: Dict[int, RunDetail], cha
     # Add player item level and group metrics if run details are available
     if run_id in run_details_dict:
         run_detail = run_details_dict[run_id]
-        
-        # Find player's item level and calculate delta
         player_ilvl = None
-        avg_ilvl = run_detail.average_item_level
+        other_players_ilvls = []
         
+        # Collect player's item level and all other valid player item levels
         for player in run_detail.players:
-            if player.character_name.lower() == character_name.lower():
-                player_ilvl = player.item_level
-                break
+            # Check if the item level is valid (not None, not 0)
+            if player.item_level is not None and player.item_level > 0:
+                if player.character_name.lower() == character_name.lower():
+                    player_ilvl = player.item_level
+                else:
+                    other_players_ilvls.append(player.item_level)
+        
+        # Calculate average of other players' item levels
+        other_avg_ilvl = None
+        if other_players_ilvls:  # Make sure there's at least one valid item level
+            other_avg_ilvl = round(sum(other_players_ilvls) / len(other_players_ilvls), 1)
+        
+        # Calculate delta comparing player to the average of others
+        ilvl_delta = None
+        if player_ilvl is not None and other_avg_ilvl is not None:
+            ilvl_delta = round(player_ilvl - other_avg_ilvl, 1)
         
         enhanced_run["player_ilvl"] = player_ilvl
-        enhanced_run["avg_ilvl"] = avg_ilvl
-        enhanced_run["ilvl_delta"] = round(player_ilvl - avg_ilvl, 1) if player_ilvl is not None and avg_ilvl is not None else None
+        enhanced_run["other_avg_ilvl"] = other_avg_ilvl
+        enhanced_run["ilvl_delta"] = ilvl_delta
     else:
         # Default values if run details not available
         enhanced_run["player_ilvl"] = None
-        enhanced_run["avg_ilvl"] = None
+        enhanced_run["other_avg_ilvl"] = None
         enhanced_run["ilvl_delta"] = None
     
     return enhanced_run

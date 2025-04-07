@@ -67,9 +67,12 @@
                                             <th>Completed</th>
                                             <th>Time</th>
                                             <th>Par Time</th>
-                                            <th>Upgrades</th>
+                                            <th>Key+</th>
                                             <th>Score</th>
-                                            <th>iLvl (Delta)</th>
+                                            <th data-bs-toggle="tooltip" data-bs-placement="top"
+                                                title="Player's item level compared to the average of other group members">
+                                                ilvl (vs Group)
+                                            </th>
                                             <th>Role</th>
                                             <th>Affixes</th>
                                             <th></th>
@@ -108,11 +111,11 @@
                                                 {{ run.player_ilvl }}
                                                 {% if run.ilvl_delta is not none %}
                                                 {% if run.ilvl_delta < 0 %} <span class="badge bg-danger">
-                                                    {{ run.ilvl_delta }}%</span>
+                                                    {{ run.ilvl_delta }}</span>
                                                     {% elif run.ilvl_delta > 0 %}
-                                                    <span class="badge bg-success">+{{ run.ilvl_delta }}%</span>
+                                                    <span class="badge bg-success">+{{ run.ilvl_delta }}</span>
                                                     {% else %}
-                                                    <span class="badge bg-secondary">{{ run.ilvl_delta }}%</span>
+                                                    <span class="badge bg-secondary">{{ run.ilvl_delta }}</span>
                                                     {% endif %}
                                                     {% else %}
                                                     <span class="badge bg-info">no avg</span>
@@ -187,7 +190,10 @@
                                             <th>Par Time</th>
                                             <th>Upgrades</th>
                                             <th>Score</th>
-                                            <th>iLvl (Delta)</th>
+                                            <th data-bs-toggle="tooltip" data-bs-placement="top"
+                                                title="Player's item level compared to the average of other group members">
+                                                ilvl (vs Group)
+                                            </th>
                                             <th>Role</th>
                                             <th>Affixes</th>
                                             <th></th>
@@ -226,11 +232,11 @@
                                                 {{ run.player_ilvl }}
                                                 {% if run.ilvl_delta is not none %}
                                                 {% if run.ilvl_delta < 0 %} <span class="badge bg-danger">
-                                                    {{ run.ilvl_delta }}%</span>
+                                                    {{ run.ilvl_delta }}</span>
                                                     {% elif run.ilvl_delta > 0 %}
-                                                    <span class="badge bg-success">+{{ run.ilvl_delta }}%</span>
+                                                    <span class="badge bg-success">+{{ run.ilvl_delta }}</span>
                                                     {% else %}
-                                                    <span class="badge bg-secondary">{{ run.ilvl_delta }}%</span>
+                                                    <span class="badge bg-secondary">{{ run.ilvl_delta }}</span>
                                                     {% endif %}
                                                     {% else %}
                                                     <span class="badge bg-info">no avg</span>
@@ -290,6 +296,15 @@
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
         <script src="{{ url_for('static', path='/js/script.js') }}"></script>
+        <script>
+            // Initialize tooltips
+            document.addEventListener('DOMContentLoaded', function () {
+                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl)
+                })
+            });
+        </script>
     </body>
 
 </html>
