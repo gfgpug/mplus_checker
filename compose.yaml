@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./static:/app/static
+      - ./templates:/app/templates
+    environment:
+      - ENVIRONMENT=production
+      # Add any other environment variables your app needs
