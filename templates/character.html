@@ -32,18 +32,103 @@
                 <div class="col-md-12">
                     <div class="card shadow-sm">
                         <div class="card-body">
-                            <div class="d-flex align-items-center">
+                            <div class="d-flex align-items-center mb-3">
                                 <div class="me-3">
                                     <img src="{{ character.thumbnail_url }}" alt="{{ character.name }}" class="rounded"
                                         width="64">
                                 </div>
-                                <div>
+                                <div class="flex-grow-1">
                                     <h1 class="h3 mb-1">{{ character.name }}</h1>
                                     <p class="mb-0 text-muted">{{ character.active_spec_name }}
                                         {{ character.class_name }}
                                     </p>
                                     <a href="{{ character.profile_url }}" target="_blank" class="small">View on
                                         Raider.IO</a>
+                                </div>
+                                <div class="text-center score-display">
+                                    <div class="total-score">
+                                        {{ character.season_scores.all if character.season_scores else 0 }}</div>
+                                    <div class="score-label">Total Score</div>
+                                    <div class="role-scores mt-2">
+                                        {% if character.season_scores %}
+                                        {% if character.season_scores.dps and character.season_scores.dps > 0 %}
+                                        <span class="role-score dps" title="DPS Score">
+                                            <span class="role-name">DPS:</span> {{ character.season_scores.dps }}
+                                        </span>
+                                        {% endif %}
+
+                                        {% if character.season_scores.healer and character.season_scores.healer > 0 %}
+                                        <span class="role-score healer" title="Healer Score">
+                                            <span class="role-name">Heal:</span> {{ character.season_scores.healer }}
+                                        </span>
+                                        {% endif %}
+
+                                        {% if character.season_scores.tank and character.season_scores.tank > 0 %}
+                                        <span class="role-score tank" title="Tank Score">
+                                            <span class="role-name">Tank:</span> {{ character.season_scores.tank }}
+                                        </span>
+                                        {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bracket Statistics -->
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h5 class="mb-2">Performance by Key Level</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Bracket</th>
+                                                    <th>Runs</th>
+                                                    <th data-bs-toggle="tooltip" data-bs-placement="top"
+                                                        title="Average time compared to par time (negative is better)">
+                                                        Avg Time vs Par
+                                                    </th>
+                                                    <th data-bs-toggle="tooltip" data-bs-placement="top"
+                                                        title="Average item level compared to group members">
+                                                        Avg ilvl vs Group
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for bracket, stats in character.bracket_stats.items() %}
+                                                <tr>
+                                                    <td><strong>{{ bracket }}</strong></td>
+                                                    <td>{{ stats.run_count }}</td>
+                                                    <td>
+                                                        {% if stats.avg_time_pct is not none %}
+                                                        {% if stats.avg_time_pct < 0 %} <span class="text-success">
+                                                            {{ stats.avg_time_pct }}%</span>
+                                                            {% else %}
+                                                            <span class="text-danger">+{{ stats.avg_time_pct }}%</span>
+                                                            {% endif %}
+                                                            {% else %}
+                                                            N/A
+                                                            {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if stats.avg_ilvl_delta is not none %}
+                                                        {% if stats.avg_ilvl_delta < 0 %} <span class="text-danger">
+                                                            {{ stats.avg_ilvl_delta }}</span>
+                                                            {% elif stats.avg_ilvl_delta > 0 %}
+                                                            <span class="text-success">+{{ stats.avg_ilvl_delta
+                                                                }}</span>
+                                                            {% else %}
+                                                            <span
+                                                                class="text-secondary">{{ stats.avg_ilvl_delta }}</span>
+                                                            {% endif %}
+                                                            {% else %}
+                                                            N/A
+                                                            {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -105,7 +190,7 @@
                                                 <span class="badge bg-success">+3</span>
                                                 {% endif %}
                                             </td>
-                                            <td>{{ run.score|round(1) }}</td>
+                                            <td>{{ run.score }}</td>
                                             <td>
                                                 {% if run.player_ilvl is not none %}
                                                 {{ run.player_ilvl }}
@@ -226,7 +311,7 @@
                                                 <span class="badge bg-success">+3</span>
                                                 {% endif %}
                                             </td>
-                                            <td>{{ run.score|round(1) }}</td>
+                                            <td>{{ run.score }}</td>
                                             <td>
                                                 {% if run.player_ilvl is not none %}
                                                 {{ run.player_ilvl }}

@@ -208,3 +208,91 @@ td img {
 .card-body {
     padding: 1.5rem;
 }
+
+/* Bracket statistics table styling */
+.table-sm {
+    font-size: 0.875rem;
+}
+
+.table-sm th {
+    font-weight: 600;
+}
+
+/* Make positive and negative percentages stand out */
+.text-success {
+    font-weight: 600;
+}
+
+.text-danger {
+    font-weight: 600;
+}
+
+/* Total Score Styling */
+.score-display {
+    background-color: #343a40;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    min-width: 100px;
+}
+
+.total-score {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.score-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+/* Role Score Styling */
+.role-scores {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    font-size: 0.8rem;
+}
+
+.role-score {
+    padding: 2px 5px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.role-score.dps {
+    background-color: rgba(211, 56, 56, 0.2);
+    color: #f1f1f1;
+    border: 1px solid rgba(211, 56, 56, 0.5);
+}
+
+.role-score.healer {
+    background-color: rgba(56, 184, 79, 0.2);
+    color: #f1f1f1;
+    border: 1px solid rgba(56, 184, 79, 0.5);
+}
+
+.role-score.tank {
+    background-color: rgba(56, 111, 184, 0.2);
+    color: #f1f1f1;
+    border: 1px solid rgba(56, 111, 184, 0.5);
+}
+
+.role-name {
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+@media (max-width: 576px) {
+    .score-display {
+        margin-top: 15px;
+        width: 100%;
+    }
+
+    .role-scores {
+        margin-top: 5px;
+    }
+}

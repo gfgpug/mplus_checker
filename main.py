@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 app = FastAPI(title="WoW Mythic+ Character Lookup")
 
@@ -30,6 +30,24 @@ class Affix(BaseModel):
     icon_url: str
     wowhead_url: str
 
+
+class SeasonScores(BaseModel):
+    all: float
+    dps: float
+    healer: float
+    tank: float
+    spec_0: float = 0
+    spec_1: float = 0
+    spec_2: float = 0
+    spec_3: float = 0
+
+
+class MythicPlusSeason(BaseModel):
+    season: str
+    scores: SeasonScores
+    segments: Any  # Not needed for your use case
+
+
 class MythicPlusRun(BaseModel):
     dungeon: str
     short_name: str
@@ -38,9 +56,17 @@ class MythicPlusRun(BaseModel):
     clear_time_ms: int
     par_time_ms: int
     num_keystone_upgrades: int
+    keystone_run_id: int
     score: float
-    url: str
     affixes: List[Affix]
+    url: str
+    # Fields we don't need to model explicitly
+    map_challenge_mode_id: Any = None
+    zone_id: Any = None
+    zone_expansion_id: Any = None
+    icon_url: Any = None
+    background_image_url: Any = None
+
 
 class RunDetailPlayer(BaseModel):
     character_name: str
@@ -49,22 +75,125 @@ class RunDetailPlayer(BaseModel):
     profile_url: str
     item_level: Optional[float] = None
 
+
 class RunDetail(BaseModel):
     run_id: int
     keystone_run_id: int
     players: List[RunDetailPlayer]
     average_item_level: Optional[float] = None
 
-class CharacterMythicPlusData(BaseModel):
-    mythic_plus_recent_runs: Optional[List[MythicPlusRun]] = None
-    mythic_plus_best_runs: Optional[List[MythicPlusRun]] = None
+
+class EnhancedMythicPlusRun(BaseModel):
+    # Base run fields
+    dungeon: str
+    short_name: str
+    mythic_level: int
+    completed_at: str
+    clear_time_ms: int
+    par_time_ms: int
+    num_keystone_upgrades: int
+    keystone_run_id: int
+    score: float
+    affixes: List[Affix]
+    url: str
+    
+    # Additional calculated fields
+    run_id: int
+    time_diff_percent: float
+    clear_time_minutes: float
+    par_time_minutes: float
+    player_ilvl: Optional[float] = None
+    other_avg_ilvl: Optional[float] = None
+    ilvl_delta: Optional[float] = None
+
+
+class BracketStats(BaseModel):
+    avg_time_pct: Optional[float] = None
+    avg_ilvl_delta: Optional[float] = None
+    run_count: int
+
+
+class CharacterData(BaseModel):
+    name: str
+    race: str
+    class_name: str = Field(..., alias="class")
+    active_spec_name: str
+    thumbnail_url: str
+    profile_url: str
+    realm: str
+    region: str
+    mythic_plus_scores_by_season: List[MythicPlusSeason]
+    mythic_plus_recent_runs: List[MythicPlusRun]
+    mythic_plus_best_runs: List[MythicPlusRun]
+    
+    class Config:
+        populate_by_name = True  # Handle the class field alias
+    
+    def get_current_season_scores(self) -> Optional[SeasonScores]:
+        """Get scores for season-tww-2"""
+        for season in self.mythic_plus_scores_by_season:
+            if season.season == "season-tww-2":
+                return season.scores
+        return None
+    
+    @property
+    def total_score(self) -> float:
+        """Get the current season's total score"""
+        scores = self.get_current_season_scores()
+        return scores.all if scores else 0.0
+    
+    @property
+    def dps_score(self) -> float:
+        """Get the current season's DPS score"""
+        scores = self.get_current_season_scores()
+        return scores.dps if scores else 0.0
+    
+    @property
+    def healer_score(self) -> float:
+        """Get the current season's healer score"""
+        scores = self.get_current_season_scores()
+        return scores.healer if scores else 0.0
+    
+    @property
+    def tank_score(self) -> float:
+        """Get the current season's tank score"""
+        scores = self.get_current_season_scores()
+        return scores.tank if scores else 0.0
+
+
+class EnhancedCharacterData(BaseModel):
     name: str
     race: str
     class_name: str
     active_spec_name: str
     profile_url: str
     thumbnail_url: str
-    run_details: Optional[Dict[int, RunDetail]] = None
+    mythic_plus_recent_runs: List[EnhancedMythicPlusRun]
+    mythic_plus_best_runs: List[EnhancedMythicPlusRun]
+    run_details: Dict[int, RunDetail]
+    bracket_stats: Dict[str, BracketStats]
+    season_scores: Optional[SeasonScores] = None
+    
+    @property
+    def total_score(self) -> float:
+        """Access the total score from season scores"""
+        return self.season_scores.all if self.season_scores else 0.0
+    
+    @property
+    def dps_score(self) -> float:
+        """Access the DPS score from season scores"""
+        return self.season_scores.dps if self.season_scores else 0.0
+    
+    @property
+    def healer_score(self) -> float:
+        """Access the healer score from season scores"""
+        return self.season_scores.healer if self.season_scores else 0.0
+    
+    @property
+    def tank_score(self) -> float:
+        """Access the tank score from season scores"""
+        return self.season_scores.tank if self.season_scores else 0.0
+
 
 def extract_season_from_url(url: str) -> str:
     """Extract the season identifier from a Raider.IO URL."""
@@ -90,6 +219,60 @@ def calculate_run_metrics(run: Dict[str, Any]) -> Dict[str, Any]:
         "clear_time_minutes": clear_time_minutes,
         "par_time_minutes": par_time_minutes
     }
+
+def calculate_bracket_stats(runs, character_name):
+    """Calculate average par time percentage and item level delta by key level brackets."""
+    brackets = {
+        "1-3": {"runs": [], "par_time_pcts": [], "ilvl_deltas": []},
+        "4-6": {"runs": [], "par_time_pcts": [], "ilvl_deltas": []},
+        "7-9": {"runs": [], "par_time_pcts": [], "ilvl_deltas": []},
+        "10+": {"runs": [], "par_time_pcts": [], "ilvl_deltas": []}
+    }
+    
+    # Group runs into brackets
+    for run in runs:
+        level = run.get("mythic_level", 0)
+        time_diff_percent = run.get("time_diff_percent")
+        ilvl_delta = run.get("ilvl_delta")
+        
+        # Determine which bracket this run belongs to
+        bracket_key = None
+        if 1 <= level <= 3:
+            bracket_key = "1-3"
+        elif 4 <= level <= 6:
+            bracket_key = "4-6"
+        elif 7 <= level <= 9:
+            bracket_key = "7-9"
+        elif level >= 10:
+            bracket_key = "10+"
+            
+        if bracket_key:
+            brackets[bracket_key]["runs"].append(run)
+            if time_diff_percent is not None:
+                brackets[bracket_key]["par_time_pcts"].append(time_diff_percent)
+            if ilvl_delta is not None:
+                brackets[bracket_key]["ilvl_deltas"].append(ilvl_delta)
+    
+    # Calculate averages for each bracket
+    bracket_stats = {}
+    for bracket_key, data in brackets.items():
+        avg_time_pct = None
+        if data["par_time_pcts"]:
+            avg_time_pct = round(sum(data["par_time_pcts"]) / len(data["par_time_pcts"]), 1)
+            
+        avg_ilvl_delta = None
+        if data["ilvl_deltas"]:
+            avg_ilvl_delta = round(sum(data["ilvl_deltas"]) / len(data["ilvl_deltas"]), 1)
+            
+        run_count = len(data["runs"])
+        
+        bracket_stats[bracket_key] = {
+            "avg_time_pct": avg_time_pct,
+            "avg_ilvl_delta": avg_ilvl_delta,
+            "run_count": run_count
+        }
+    
+    return bracket_stats
 
 async def fetch_run_details(run_id: int, season: str = "season-tww-2") -> Optional[RunDetail]:
     """Fetch detailed information about a specific Mythic+ run."""
@@ -235,7 +418,7 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
         "region": region,
         "realm": realm,
         "name": character_name,
-        "fields": "mythic_plus_recent_runs,mythic_plus_best_runs"
+        "fields": "mythic_plus_recent_runs,mythic_plus_best_runs,mythic_plus_scores_by_season"
     }
     
     async with httpx.AsyncClient() as client:
@@ -257,8 +440,22 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
             "thumbnail_url": data.get("thumbnail_url", ""),
             "mythic_plus_recent_runs": [],
             "mythic_plus_best_runs": [],
-            "run_details": {}
+            "run_details": {},
+            "season_scores": None
         }
+        
+        # Extract season scores
+        for season in data.get("mythic_plus_scores_by_season", []):
+            if season.get("season") == "season-tww-2":
+                character_data["season_scores"] = season.get("scores", {})
+                # Print scores for debugging
+                print(f"Season scores found: {character_data['season_scores']}")
+                break
+                
+        # If we don't find the specific season, try to use the first season's scores
+        if character_data["season_scores"] is None and data.get("mythic_plus_scores_by_season"):
+            character_data["season_scores"] = data.get("mythic_plus_scores_by_season")[0].get("scores", {})
+            print(f"Using first available season scores: {character_data['season_scores']}")
         
         # Process runs (both recent and best)
         recent_runs = data.get("mythic_plus_recent_runs", [])
@@ -287,6 +484,24 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
         
         # Store the run details for reference
         character_data["run_details"] = run_details_dict
+        
+        # Add bracket statistics from all runs (combine recent and best)
+        all_runs = character_data["mythic_plus_recent_runs"] + character_data["mythic_plus_best_runs"]
+        # Remove duplicates by creating a dictionary keyed by run_id
+        unique_runs = {}
+        for run in all_runs:
+            run_id = run.get("run_id")
+            if run_id and run_id not in unique_runs:
+                unique_runs[run_id] = run
+        
+        # Calculate bracket statistics
+        character_data["bracket_stats"] = calculate_bracket_stats(list(unique_runs.values()), character_data["name"])
+        
+        # Calculate total score from best runs in case season score is not available
+        if character_data["season_scores"] is None:
+            total_score = sum(run.get("score", 0) for run in character_data["mythic_plus_best_runs"])
+            character_data["season_scores"] = {"all": total_score, "dps": 0, "healer": 0, "tank": 0}
+            print(f"Calculated total score from best runs: {total_score}")
         
         return character_data
 
