@@ -418,7 +418,7 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
         "region": region,
         "realm": realm,
         "name": character_name,
-        "fields": "mythic_plus_recent_runs,mythic_plus_best_runs,mythic_plus_scores_by_season"
+        "fields": "mythic_plus_recent_runs,mythic_plus_best_runs,mythic_plus_scores_by_season:season-tww-2"
     }
     
     async with httpx.AsyncClient() as client:
