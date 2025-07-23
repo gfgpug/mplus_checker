@@ -1,33 +1,14 @@
-[tool.poetry]
-name = "wow-mythic-plus-lookup"
+[project]
+name = "key-event"
 version = "0.1.0"
-description = "Web app to look up World of Warcraft character Mythic+ runs"
-authors = ["Your Name <your.email@example.com>"]
+description = "Add your description here"
 readme = "README.md"
-package-mode = false
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.116.1",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.12,<4.0"
-fastapi = "^0.115.12"
-uvicorn = "^0.34.0"
-httpx = "^0.28.1"
-jinja2 = "^3.1.6"
-python-multipart = "^0.0.18"
-python-dotenv = "^1.1.0"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.5"
-isort = "^6.0.1"
-black = "^25.1.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.black]
-line-length = 88
-target-version = ['py38']
-
-[tool.isort]
-profile = "black"
-line_length = 88
+[dependency-groups]
+dev = [
+    "mypy>=1.17.0",
+]
