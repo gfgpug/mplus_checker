@@ -8,3 +8,4 @@ services:
       - ./templates:/app/templates
     environment:
       - RIO_API_KEY=${RIO_API_KEY}
+    restart: unless-stopped
