@@ -91,6 +91,10 @@
                                                         title="Average item level compared to group members">
                                                         Avg ilvl vs Group
                                                     </th>
+                                                    <th data-bs-toggle="tooltip" data-bs-placement="top"
+                                                        title="Average IO score compared to group members">
+                                                        Avg IO vs Group
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -119,6 +123,21 @@
                                                             {% else %}
                                                             <span
                                                                 class="text-secondary">{{ stats.avg_ilvl_delta }}</span>
+                                                            {% endif %}
+                                                            {% else %}
+                                                            N/A
+                                                            {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if stats.avg_score_delta is not none %}
+                                                        {% if stats.avg_score_delta < 0 %} <span class="text-danger">
+                                                            {{ stats.avg_score_delta }}</span>
+                                                            {% elif stats.avg_score_delta > 0 %}
+                                                            <span class="text-success">+{{ stats.avg_score_delta
+                                                                }}</span>
+                                                            {% else %}
+                                                            <span
+                                                                class="text-secondary">{{ stats.avg_score_delta }}</span>
                                                             {% endif %}
                                                             {% else %}
                                                             N/A
@@ -157,6 +176,10 @@
                                             <th data-bs-toggle="tooltip" data-bs-placement="top"
                                                 title="Player's item level compared to the average of other group members">
                                                 ilvl (vs Group)
+                                            </th>
+                                            <th data-bs-toggle="tooltip" data-bs-placement="top"
+                                                title="Player's IO score compared to the average of other group members">
+                                                IO (vs Group)
                                             </th>
                                             <th>Role</th>
                                             <th>Affixes</th>
@@ -210,6 +233,24 @@
                                                     {% endif %}
                                             </td>
                                             <td>
+                                                {% if run.player_score is not none %}
+                                                {{ run.player_score }}
+                                                {% if run.score_delta is not none %}
+                                                {% if run.score_delta < 0 %} <span class="badge bg-danger">
+                                                    {{ run.score_delta }}</span>
+                                                    {% elif run.score_delta > 0 %}
+                                                    <span class="badge bg-success">+{{ run.score_delta }}</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">{{ run.score_delta }}</span>
+                                                    {% endif %}
+                                                    {% else %}
+                                                    <span class="badge bg-info">no avg</span>
+                                                    {% endif %}
+                                                    {% else %}
+                                                    N/A
+                                                    {% endif %}
+                                            </td>
+                                            <td>
                                                 {% if run.run_id in character.run_details %}
                                                 {% set run_detail = character.run_details[run.run_id] %}
                                                 {% for player in run_detail.players %}
@@ -246,7 +287,7 @@
                                         {% endfor %}
                                         {% else %}
                                         <tr>
-                                            <td colspan="11" class="text-center">No recent runs found.</td>
+                                            <td colspan="12" class="text-center">No recent runs found.</td>
                                         </tr>
                                         {% endif %}
                                     </tbody>
@@ -278,6 +319,10 @@
                                             <th data-bs-toggle="tooltip" data-bs-placement="top"
                                                 title="Player's item level compared to the average of other group members">
                                                 ilvl (vs Group)
+                                            </th>
+                                            <th data-bs-toggle="tooltip" data-bs-placement="top"
+                                                title="Player's IO score compared to the average of other group members">
+                                                IO (vs Group)
                                             </th>
                                             <th>Role</th>
                                             <th>Affixes</th>
@@ -331,6 +376,24 @@
                                                     {% endif %}
                                             </td>
                                             <td>
+                                                {% if run.player_score is not none %}
+                                                {{ run.player_score }}
+                                                {% if run.score_delta is not none %}
+                                                {% if run.score_delta < 0 %} <span class="badge bg-danger">
+                                                    {{ run.score_delta }}</span>
+                                                    {% elif run.score_delta > 0 %}
+                                                    <span class="badge bg-success">+{{ run.score_delta }}</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">{{ run.score_delta }}</span>
+                                                    {% endif %}
+                                                    {% else %}
+                                                    <span class="badge bg-info">no avg</span>
+                                                    {% endif %}
+                                                    {% else %}
+                                                    N/A
+                                                    {% endif %}
+                                            </td>
+                                            <td>
                                                 {% if run.run_id in character.run_details %}
                                                 {% set run_detail = character.run_details[run.run_id] %}
                                                 {% for player in run_detail.players %}
@@ -367,7 +430,7 @@
                                         {% endfor %}
                                         {% else %}
                                         <tr>
-                                            <td colspan="11" class="text-center">No best runs found.</td>
+                                            <td colspan="12" class="text-center">No best runs found.</td>
                                         </tr>
                                         {% endif %}
                                     </tbody>
