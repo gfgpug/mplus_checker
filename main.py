@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 # Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)  # Only log warnings and errors
+logger.setLevel(logging.INFO)
 
 # Create formatter
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -23,7 +23,7 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.WARNING)
 console_handler.setFormatter(formatter)
 
-# Add handler to logger
+# Add handlers to logger
 logger.addHandler(console_handler)
 
 app = FastAPI(title="WoW Mythic+ Character Lookup")
@@ -91,6 +91,7 @@ class RunDetailPlayer(BaseModel):
     character_role: Literal["tank", "dps", "healer"]
     profile_url: str
     item_level: Optional[float] = None
+    mythic_plus_score: Optional[float] = None
 
 
 class RunDetail(BaseModel):
@@ -122,11 +123,15 @@ class EnhancedMythicPlusRun(BaseModel):
     player_ilvl: Optional[float] = None
     other_avg_ilvl: Optional[float] = None
     ilvl_delta: Optional[float] = None
+    player_score: Optional[float] = None
+    other_avg_score: Optional[float] = None
+    score_delta: Optional[float] = None
 
 
 class BracketStats(BaseModel):
     avg_time_pct: Optional[float] = None
     avg_ilvl_delta: Optional[float] = None
+    avg_score_delta: Optional[float] = None
     run_count: int
 
 
@@ -242,12 +247,12 @@ def calculate_run_metrics(run: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def calculate_bracket_stats(runs, character_name):
-    """Calculate average par time percentage and item level delta by key level brackets."""
+    """Calculate average par time percentage, item level delta, and score delta by key level brackets."""
     brackets = {
-        "1-3": {"runs": [], "par_time_pcts": [], "ilvl_deltas": []},
-        "4-6": {"runs": [], "par_time_pcts": [], "ilvl_deltas": []},
-        "7-9": {"runs": [], "par_time_pcts": [], "ilvl_deltas": []},
-        "10+": {"runs": [], "par_time_pcts": [], "ilvl_deltas": []},
+        "1-3": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": []},
+        "4-6": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": []},
+        "7-9": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": []},
+        "10+": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": []},
     }
 
     # Group runs into brackets
@@ -255,6 +260,7 @@ def calculate_bracket_stats(runs, character_name):
         level = run.get("mythic_level", 0)
         time_diff_percent = run.get("time_diff_percent")
         ilvl_delta = run.get("ilvl_delta")
+        score_delta = run.get("score_delta")
 
         # Determine which bracket this run belongs to
         bracket_key = None
@@ -273,6 +279,8 @@ def calculate_bracket_stats(runs, character_name):
                 brackets[bracket_key]["par_time_pcts"].append(time_diff_percent)
             if ilvl_delta is not None:
                 brackets[bracket_key]["ilvl_deltas"].append(ilvl_delta)
+            if score_delta is not None:
+                brackets[bracket_key]["score_deltas"].append(score_delta)
 
     # Calculate averages for each bracket
     bracket_stats = {}
@@ -289,11 +297,18 @@ def calculate_bracket_stats(runs, character_name):
                 sum(data["ilvl_deltas"]) / len(data["ilvl_deltas"]), 1
             )
 
+        avg_score_delta = None
+        if data["score_deltas"]:
+            avg_score_delta = round(
+                sum(data["score_deltas"]) / len(data["score_deltas"]), 1
+            )
+
         run_count = len(data["runs"])
 
         bracket_stats[bracket_key] = {
             "avg_time_pct": avg_time_pct,
             "avg_ilvl_delta": avg_ilvl_delta,
+            "avg_score_delta": avg_score_delta,
             "run_count": run_count,
         }
 
@@ -326,6 +341,9 @@ async def fetch_run_details(
 
                 try:
                     player_name = player.get("name")
+                    # Log available player fields to see what we have
+                    logger.info(f"Player {player_name} available fields: {list(player.keys())}")
+
                     player_class = player.get("class", {}).get("slug")
                     player_role = player.get("spec", {}).get("role")
                     item_level = roster_slot.get("items", {}).get("item_level_equipped")
@@ -334,12 +352,27 @@ async def fetch_run_details(
                     if item_level is not None:
                         item_level = round(float(item_level), 1)
 
+                    # Extract mythic plus score from ranks
+                    mythic_plus_score = None
+                    ranks = roster_slot.get("ranks", {})
+                    logger.info(f"Player {player_name}: ranks = {ranks}")
+                    if ranks:
+                        score_value = ranks.get("score")
+                        if score_value is not None:
+                            mythic_plus_score = round(float(score_value), 1)
+                            logger.info(f"Player {player_name}: extracted score = {mythic_plus_score}")
+                        else:
+                            logger.warning(f"Player {player_name}: no 'score' in ranks")
+                    else:
+                        logger.warning(f"Player {player_name}: no ranks data")
+
                     player_data = RunDetailPlayer(
                         character_name=player_name,
                         character_class=player_class,
                         character_role=player_role,
                         profile_url=player.get("profile_url", ""),
                         item_level=item_level,
+                        mythic_plus_score=mythic_plus_score,
                     )
                     players.append(player_data)
 
@@ -411,36 +444,77 @@ def enhance_run(
         run_detail = run_details_dict[run_id]
         player_ilvl = None
         other_players_ilvls = []
+        player_score = None
+        other_players_scores = []
 
-        # Collect player's item level and all other valid player item levels
+        # Collect player's item level, score and all other valid player metrics
+        logger.info(f"Run {run_id}: Collecting scores for character '{character_name}'")
         for player in run_detail.players:
-            # Check if the item level is valid (not None, not 0)
+            is_target_player = player.character_name.lower() == character_name.lower()
+            logger.info(f"  Player: {player.character_name} (target={is_target_player}), score={player.mythic_plus_score}")
+
+            # Handle item level
             if player.item_level is not None and player.item_level > 0:
-                if player.character_name.lower() == character_name.lower():
+                if is_target_player:
                     player_ilvl = player.item_level
                 else:
                     other_players_ilvls.append(player.item_level)
 
+            # Handle mythic plus score
+            if player.mythic_plus_score is not None and player.mythic_plus_score > 0:
+                if is_target_player:
+                    player_score = player.mythic_plus_score
+                    logger.info(f"  Found target player score: {player_score}")
+                else:
+                    other_players_scores.append(player.mythic_plus_score)
+                    logger.info(f"  Added other player score: {player.mythic_plus_score}")
+            else:
+                logger.warning(f"  Player {player.character_name} has invalid score: {player.mythic_plus_score}")
+
         # Calculate average of other players' item levels
         other_avg_ilvl = None
-        if other_players_ilvls:  # Make sure there's at least one valid item level
+        if other_players_ilvls:
             other_avg_ilvl = round(
                 sum(other_players_ilvls) / len(other_players_ilvls), 1
             )
 
-        # Calculate delta comparing player to the average of others
+        # Calculate delta comparing player to the average of others (ilvl)
         ilvl_delta = None
         if player_ilvl is not None and other_avg_ilvl is not None:
             ilvl_delta = round(player_ilvl - other_avg_ilvl, 1)
 
+        # Calculate average of other players' scores
+        other_avg_score = None
+        if other_players_scores:
+            other_avg_score = round(
+                sum(other_players_scores) / len(other_players_scores), 1
+            )
+            logger.info(f"  Other players scores: {other_players_scores} -> avg: {other_avg_score}")
+        else:
+            logger.warning(f"  No valid other player scores found")
+
+        # Calculate delta comparing player to the average of others (score)
+        score_delta = None
+        if player_score is not None and other_avg_score is not None:
+            score_delta = round(player_score - other_avg_score, 1)
+            logger.info(f"  score_delta = {player_score} - {other_avg_score} = {score_delta}")
+        else:
+            logger.warning(f"  Cannot calculate score_delta: player_score={player_score}, other_avg_score={other_avg_score}")
+
         enhanced_run["player_ilvl"] = player_ilvl
         enhanced_run["other_avg_ilvl"] = other_avg_ilvl
         enhanced_run["ilvl_delta"] = ilvl_delta
+        enhanced_run["player_score"] = player_score
+        enhanced_run["other_avg_score"] = other_avg_score
+        enhanced_run["score_delta"] = score_delta
     else:
         # Default values if run details not available
         enhanced_run["player_ilvl"] = None
         enhanced_run["other_avg_ilvl"] = None
         enhanced_run["ilvl_delta"] = None
+        enhanced_run["player_score"] = None
+        enhanced_run["other_avg_score"] = None
+        enhanced_run["score_delta"] = None
 
     return enhanced_run
 
