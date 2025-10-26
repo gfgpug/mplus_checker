@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
@@ -9,6 +10,21 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)  # Only log warnings and errors
+
+# Create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.WARNING)
+console_handler.setFormatter(formatter)
+
+# Add handler to logger
+logger.addHandler(console_handler)
 
 app = FastAPI(title="WoW Mythic+ Character Lookup")
 
@@ -131,9 +147,9 @@ class CharacterData(BaseModel):
         populate_by_name = True  # Handle the class field alias
 
     def get_current_season_scores(self) -> Optional[SeasonScores]:
-        """Get scores for season-tww-2"""
+        """Get scores for season-tww-3"""
         for season in self.mythic_plus_scores_by_season:
-            if season.season == "season-tww-2":
+            if season.season == "season-tww-3":
                 return season.scores
         return None
 
@@ -198,7 +214,7 @@ class EnhancedCharacterData(BaseModel):
 
 def extract_season_from_url(url: str) -> str:
     """Extract the season identifier from a Raider.IO URL."""
-    default_season = "season-tww-2"
+    default_season = "season-tww-3"  # Updated for TWW Season 3
 
     url_parts = url.split("/")
     if len(url_parts) > 3 and url_parts[3].startswith("season-"):
@@ -285,7 +301,7 @@ def calculate_bracket_stats(runs, character_name):
 
 
 async def fetch_run_details(
-    run_id: int, season: str = "season-tww-2"
+    run_id: int, season: str = "season-tww-3"
 ) -> Optional[RunDetail]:
     """Fetch detailed information about a specific Mythic+ run."""
     url = f"{RAIDER_IO_API_URL}/mythic-plus/run-details"
@@ -296,7 +312,7 @@ async def fetch_run_details(
             response = await client.get(url, params=params)
 
             if response.status_code != 200:
-                print(f"API error for run {run_id}: Status {response.status_code}")
+                logger.error(f"API error for run {run_id}: Status {response.status_code}")
                 return None
 
             data = response.json()
@@ -331,7 +347,7 @@ async def fetch_run_details(
                     if item_level is not None:
                         item_levels.append(item_level)
                 except Exception as e:
-                    print(f"Error parsing player data: {str(e)}")
+                    logger.error(f"Error parsing player data: {str(e)}")
 
             # Calculate average item level if we have data
             average_item_level = (
@@ -346,7 +362,8 @@ async def fetch_run_details(
             )
 
             return run_detail
-    except Exception:
+    except Exception as e:
+        logger.error(f"Exception fetching run details for run {run_id}: {type(e).__name__}: {str(e)}", exc_info=True)
         return None
 
 
@@ -370,7 +387,7 @@ async def fetch_run_details_concurrently(
     for i, (run_id, _) in enumerate(run_id_to_season.items()):
         result = results[i]
         if isinstance(result, BaseException):
-            print(f"Error fetching run {run_id}: {str(result)}")
+            logger.error(f"Error fetching run {run_id}: {str(result)}")
         elif result is not None:
             run_details_dict[run_id] = result
 
@@ -436,7 +453,7 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
         "region": region,
         "realm": realm,
         "name": character_name,
-        "fields": "mythic_plus_recent_runs,mythic_plus_best_runs,mythic_plus_scores_by_season:season-tww-2",
+        "fields": "mythic_plus_recent_runs,mythic_plus_best_runs,mythic_plus_scores_by_season:season-tww-3",
     }
 
     async with httpx.AsyncClient() as client:
@@ -466,22 +483,16 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
 
         # Extract season scores
         for season in data.get("mythic_plus_scores_by_season", []):
-            if season.get("season") == "season-tww-2":
+            if season.get("season") == "season-tww-3":
                 character_data["season_scores"] = season.get("scores", {})
-                # Print scores for debugging
-                print(f"Season scores found: {character_data['season_scores']}")
                 break
 
         # If we don't find the specific season, try to use the first season's scores
         if character_data["season_scores"] is None and data.get(
             "mythic_plus_scores_by_season"
         ):
-            character_data["season_scores"] = data.get("mythic_plus_scores_by_season")[
-                0
-            ].get("scores", {})
-            print(
-                f"Using first available season scores: {character_data['season_scores']}"
-            )
+            first_season = data.get("mythic_plus_scores_by_season")[0]
+            character_data["season_scores"] = first_season.get("scores", {})
 
         # Process runs (both recent and best)
         recent_runs = data.get("mythic_plus_recent_runs", [])
@@ -491,8 +502,9 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
         run_ids = set()
         for run in recent_runs + best_runs:
             run_id = run.get("keystone_run_id")
+            run_url = run.get("url", "")
             if run_id:
-                run_ids.add((run_id, run.get("url", "")))
+                run_ids.add((run_id, run_url))
 
         # Fetch details for all unique run IDs concurrently
         run_details_dict = await fetch_run_details_concurrently(list(run_ids))
@@ -539,7 +551,6 @@ async def fetch_character_data(region: str, realm: str, character_name: str):
                 "healer": 0,
                 "tank": 0,
             }
-            print(f"Calculated total score from best runs: {total_score}")
 
         return character_data
 
