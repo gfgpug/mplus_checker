@@ -1,3 +1,40 @@
+{% macro io_color(score) -%}
+{%- if score >= 3975 -%}#ff8000
+{%- elif score >= 3820 -%}#f9753e
+{%- elif score >= 3700 -%}#f16a5f
+{%- elif score >= 3580 -%}#e85f7c
+{%- elif score >= 3460 -%}#dd5399
+{%- elif score >= 3340 -%}#ce49b5
+{%- elif score >= 3220 -%}#bc3ed1
+{%- elif score >= 3100 -%}#a335ee
+{%- elif score >= 2970 -%}#6261e3
+{%- elif score >= 2810 -%}#2676d6
+{%- elif score >= 2690 -%}#4686c5
+{%- elif score >= 2570 -%}#5596b4
+{%- elif score >= 2450 -%}#5da7a3
+{%- elif score >= 2330 -%}#5fb790
+{%- elif score >= 2210 -%}#5dc87c
+{%- elif score >= 2090 -%}#56d966
+{%- elif score >= 1970 -%}#48ea4a
+{%- elif score >= 1850 -%}#2afc1b
+{%- elif score >= 1725 -%}#45ff2c
+{%- elif score >= 1600 -%}#62ff47
+{%- elif score >= 1475 -%}#78ff5b
+{%- elif score >= 1350 -%}#8aff6e
+{%- elif score >= 1225 -%}#9aff7f
+{%- elif score >= 1100 -%}#a9ff8f
+{%- elif score >= 975 -%}#b7ff9f
+{%- elif score >= 850 -%}#c4ffaf
+{%- elif score >= 725 -%}#d0ffbf
+{%- elif score >= 600 -%}#dcffce
+{%- elif score >= 475 -%}#e7ffdd
+{%- elif score >= 350 -%}#f2ffed
+{%- elif score >= 225 -%}#fdfffc
+{%- elif score >= 200 -%}#ffffff
+{%- else -%}#999999
+{%- endif -%}
+{%- endmacro %}
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -92,8 +129,12 @@
                                                         Avg ilvl vs Group
                                                     </th>
                                                     <th data-bs-toggle="tooltip" data-bs-placement="top"
-                                                        title="Average IO score compared to group members">
-                                                        Avg IO vs Group
+                                                        title="Average IO score delta compared to group members">
+                                                        Avg IO Delta
+                                                    </th>
+                                                    <th data-bs-toggle="tooltip" data-bs-placement="top"
+                                                        title="Player average IO score vs group average IO score">
+                                                        Player vs Group IO
                                                     </th>
                                                 </tr>
                                             </thead>
@@ -130,14 +171,31 @@
                                                     </td>
                                                     <td>
                                                         {% if stats.avg_score_delta is not none %}
-                                                        {% if stats.avg_score_delta < 0 %} <span class="text-danger">
-                                                            {{ stats.avg_score_delta }}</span>
+                                                        {% if stats.avg_score_delta < 0 %}
+                                                            <span class="text-danger">{{ stats.avg_score_delta }}</span>
                                                             {% elif stats.avg_score_delta > 0 %}
-                                                            <span class="text-success">+{{ stats.avg_score_delta
-                                                                }}</span>
+                                                            <span class="text-success">+{{ stats.avg_score_delta }}</span>
                                                             {% else %}
-                                                            <span
-                                                                class="text-secondary">{{ stats.avg_score_delta }}</span>
+                                                            <span class="text-secondary">{{ stats.avg_score_delta }}</span>
+                                                            {% endif %}
+                                                            {% else %}
+                                                            N/A
+                                                            {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if stats.avg_player_score is not none and stats.avg_group_score is not none %}
+                                                        {% if stats.avg_score_delta < 0 %}
+                                                            <span style="background-color: {{ io_color(stats.avg_player_score) }}; color: black; font-weight: bold; padding: 2px 8px; border-radius: 12px; display: inline-block;">{{ stats.avg_player_score }}</span>
+                                                            <span style="color: black;"> &lt; </span>
+                                                            <span style="background-color: {{ io_color(stats.avg_group_score) }}; color: black; font-weight: bold; padding: 2px 8px; border-radius: 12px; display: inline-block;">{{ stats.avg_group_score }}</span>
+                                                            {% elif stats.avg_score_delta > 0 %}
+                                                            <span style="background-color: {{ io_color(stats.avg_player_score) }}; color: black; font-weight: bold; padding: 2px 8px; border-radius: 12px; display: inline-block;">{{ stats.avg_player_score }}</span>
+                                                            <span style="color: black;"> &gt; </span>
+                                                            <span style="background-color: {{ io_color(stats.avg_group_score) }}; color: black; font-weight: bold; padding: 2px 8px; border-radius: 12px; display: inline-block;">{{ stats.avg_group_score }}</span>
+                                                            {% else %}
+                                                            <span style="background-color: {{ io_color(stats.avg_player_score) }}; color: black; font-weight: bold; padding: 2px 8px; border-radius: 12px; display: inline-block;">{{ stats.avg_player_score }}</span>
+                                                            <span style="color: black;"> = </span>
+                                                            <span style="background-color: {{ io_color(stats.avg_group_score) }}; color: black; font-weight: bold; padding: 2px 8px; border-radius: 12px; display: inline-block;">{{ stats.avg_group_score }}</span>
                                                             {% endif %}
                                                             {% else %}
                                                             N/A
@@ -234,7 +292,7 @@
                                             </td>
                                             <td>
                                                 {% if run.player_score is not none %}
-                                                {{ run.player_score }}
+                                                <span style="background-color: {{ io_color(run.player_score) }}; color: black; font-weight: bold; padding: 2px 8px; border-radius: 12px; display: inline-block;">{{ run.player_score }}</span>
                                                 {% if run.score_delta is not none %}
                                                 {% if run.score_delta < 0 %} <span class="badge bg-danger">
                                                     {{ run.score_delta }}</span>
@@ -377,7 +435,7 @@
                                             </td>
                                             <td>
                                                 {% if run.player_score is not none %}
-                                                {{ run.player_score }}
+                                                <span style="background-color: {{ io_color(run.player_score) }}; color: black; font-weight: bold; padding: 2px 8px; border-radius: 12px; display: inline-block;">{{ run.player_score }}</span>
                                                 {% if run.score_delta is not none %}
                                                 {% if run.score_delta < 0 %} <span class="badge bg-danger">
                                                     {{ run.score_delta }}</span>

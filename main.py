@@ -132,6 +132,8 @@ class BracketStats(BaseModel):
     avg_time_pct: Optional[float] = None
     avg_ilvl_delta: Optional[float] = None
     avg_score_delta: Optional[float] = None
+    avg_player_score: Optional[float] = None
+    avg_group_score: Optional[float] = None
     run_count: int
 
 
@@ -249,10 +251,12 @@ def calculate_run_metrics(run: Dict[str, Any]) -> Dict[str, Any]:
 def calculate_bracket_stats(runs, character_name):
     """Calculate average par time percentage, item level delta, and score delta by key level brackets."""
     brackets = {
-        "1-3": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": []},
-        "4-6": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": []},
-        "7-9": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": []},
-        "10+": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": []},
+        "0-3": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": [], "player_scores": [], "group_scores": []},
+        "4-6": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": [], "player_scores": [], "group_scores": []},
+        "7-9": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": [], "player_scores": [], "group_scores": []},
+        "10-11": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": [], "player_scores": [], "group_scores": []},
+        "12-14": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": [], "player_scores": [], "group_scores": []},
+        "15+": {"runs": [], "par_time_pcts": [], "ilvl_deltas": [], "score_deltas": [], "player_scores": [], "group_scores": []},
     }
 
     # Group runs into brackets
@@ -261,17 +265,23 @@ def calculate_bracket_stats(runs, character_name):
         time_diff_percent = run.get("time_diff_percent")
         ilvl_delta = run.get("ilvl_delta")
         score_delta = run.get("score_delta")
+        player_score = run.get("player_score")
+        group_score = run.get("other_avg_score")
 
         # Determine which bracket this run belongs to
         bracket_key = None
-        if 1 <= level <= 3:
-            bracket_key = "1-3"
+        if 0 <= level <= 3:
+            bracket_key = "0-3"
         elif 4 <= level <= 6:
             bracket_key = "4-6"
         elif 7 <= level <= 9:
             bracket_key = "7-9"
-        elif level >= 10:
-            bracket_key = "10+"
+        elif 10 <= level <= 11:
+            bracket_key = "10-11"
+        elif 12 <= level <= 14:
+            bracket_key = "12-14"
+        elif level >= 15:
+            bracket_key = "15+"
 
         if bracket_key:
             brackets[bracket_key]["runs"].append(run)
@@ -281,6 +291,10 @@ def calculate_bracket_stats(runs, character_name):
                 brackets[bracket_key]["ilvl_deltas"].append(ilvl_delta)
             if score_delta is not None:
                 brackets[bracket_key]["score_deltas"].append(score_delta)
+            if player_score is not None:
+                brackets[bracket_key]["player_scores"].append(player_score)
+            if group_score is not None:
+                brackets[bracket_key]["group_scores"].append(group_score)
 
     # Calculate averages for each bracket
     bracket_stats = {}
@@ -303,12 +317,26 @@ def calculate_bracket_stats(runs, character_name):
                 sum(data["score_deltas"]) / len(data["score_deltas"]), 1
             )
 
+        avg_player_score = None
+        if data["player_scores"]:
+            avg_player_score = round(
+                sum(data["player_scores"]) / len(data["player_scores"]), 1
+            )
+
+        avg_group_score = None
+        if data["group_scores"]:
+            avg_group_score = round(
+                sum(data["group_scores"]) / len(data["group_scores"]), 1
+            )
+
         run_count = len(data["runs"])
 
         bracket_stats[bracket_key] = {
             "avg_time_pct": avg_time_pct,
             "avg_ilvl_delta": avg_ilvl_delta,
             "avg_score_delta": avg_score_delta,
+            "avg_player_score": avg_player_score,
+            "avg_group_score": avg_group_score,
             "run_count": run_count,
         }
 
